@@ -1,0 +1,731 @@
+{
+  "name": "Task 1: Input-Aware Article Generator Agent",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message",
+          "channel_post",
+          "*"
+        ],
+        "additionalFields": {
+          "download": true
+        }
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        60,
+        -20
+      ],
+      "id": "3e5556f8-b7fd-46fb-a622-32f0802faaef",
+      "name": "Telegram Trigger",
+      "webhookId": "d9720acd-a107-4a76-bc18-b8640252c9f4",
+      "credentials": {
+        "telegramApi": {
+          "id": "naY5XPVeR0VROjIF",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "8a079bc0-f635-4fc2-91fa-4c0da5e17dc1",
+                    "leftValue": "={{ $json.message.voice.mime_type }}",
+                    "rightValue": "audio/ogg",
+                    "operator": {
+                      "type": "string",
+                      "operation": "contains"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "audio"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "231b9109-c52e-47ec-b218-fc1991102522",
+                    "leftValue": "={{ $json.message.photo }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "array",
+                      "operation": "exists",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": " photo"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.message.text }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "string",
+                      "operation": "exists",
+                      "singleValue": true
+                    },
+                    "id": "f08946d3-5246-4078-9c81-d68f3783c532"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "text image"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        300,
+        -20
+      ],
+      "id": "b1325776-c831-4f3f-bbf7-0e3e8c06235b",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.mistral.ai/v1/ocr",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer 51UsHob5NZ1ve4uetXFVclCnMjE7P3n9"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"mistral-ocr-latest\",\n  \"document\": {\n    \"type\": \"image_url\",\n    \"image_url\": \"https://api.telegram.org/file/bot7543109101:AAGq5M4-88xsOYFiBpLeWAtQAKKHIMXBVoQ/{{ $json.result.file_path }}\"\n  },\n  \"include_image_base64\": true\n} ",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file",
+              "outputPropertyName": "mistral-ocr.json"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        860,
+        -20
+      ],
+      "id": "63992791-b2ff-4ba9-abd2-93e1900f7c47",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "45ef49ca-3539-4e4a-a9df-087c4b6e9d3a",
+              "name": "message.text",
+              "value": "={{ $json.message.text }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1020,
+        240
+      ],
+      "id": "0b641bb2-479b-4100-9d98-f291763e567f",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4.1-mini"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        1860,
+        200
+      ],
+      "id": "697c51bb-00eb-4b0f-916c-d99868a5e367",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "J1xrG6u7O3iOIO3b",
+          "name": "shameerrahman"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "file",
+        "fileId": "={{ $json.message.voice.file_id }}"
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        780,
+        -220
+      ],
+      "id": "1cd3b844-65eb-403d-8351-32132371e24d",
+      "name": "Get a file",
+      "webhookId": "1567611f-098d-499f-8503-b0783f08b57d",
+      "credentials": {
+        "telegramApi": {
+          "id": "naY5XPVeR0VROjIF",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "file",
+        "fileId": "={{ $json.message.photo[2].file_id }}"
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        660,
+        -20
+      ],
+      "id": "9882afbd-62ae-42e4-b42e-3986c9a06fd7",
+      "name": "Get a file1",
+      "webhookId": "3489ace8-aeac-4cf1-8014-61a33755078e",
+      "credentials": {
+        "telegramApi": {
+          "id": "naY5XPVeR0VROjIF",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.toolWikipedia",
+      "typeVersion": 1,
+      "position": [
+        2200,
+        220
+      ],
+      "id": "03bf851f-10e4-4112-8a52-7c2f5c91bc36",
+      "name": "Wikipedia"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are an intelligent writing assistant integrated into an automation workflow.\n\n## Scenario:\nA user provides one or more rough inputs—these may be voice notes, images, or fragments of text. Your job is to interpret the content, propose a clear outline, conduct lightweight research from public sources (via the connected Wikipedia tool), and build a high-quality draft. You also incorporate collaborative feedback for refinement.\n\n---\n\n## Available Inputs:\n- Text Input: {{ $json.data[0].message.text }}\n- OCR Image Output: {{ $json.data[0].ocrimageout }}\n- Modification Instructions (optional feedback from human reviewer): {{ $json.data[\"Modification Required\"] }}\n\n---\n\n## Step 1: Determine Input Source\n\nUse this logic:\n- If `{{ $json.data[\"Modification Required\"] }}` is not empty, use that feedback to revise or regenerate the output.\n- Else if `{{ $json.data[0].message.text }}` exists and is not empty, use it as the primary input.\n- Otherwise, use `{{ $json.data[0].ocrimageout }}`.\n\nOnly process the valid and available input.\n\n---\n\n## Step 2: Generate a Structured JSON Output\n\nProduce your result in the following format:\n\n```json\n{\n  \"Outline\": [\n    \"Section 1 title and short description\",\n    \"Section 2 title and short description\",\n    \"... (as needed)\"\n  ],\n  \"Directional refinement\": {\n    \"tone\": \"Suggested tone (e.g., formal, conversational, persuasive)\",\n    \"structure\": \"Suggested structure (e.g., listicle, narrative, tutorial)\",\n    \"depth\": \"Suggested depth (e.g., high-level overview, deep dive)\"\n  },\n  \"public sources\": {\n    \"Wikipedia\": [\n      \"Concise and relevant summary from Wikipedia based on the topic (if applicable)\"\n    ]\n  }\n}\n",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2,
+      "position": [
+        1980,
+        -20
+      ],
+      "id": "03e49a29-e121-4987-bdc0-ba051732283e",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $json.data[0].message.text }}, {{ $json.data[0].ocrimageout }}",
+        "contextWindowLength": 10000000
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        2020,
+        220
+      ],
+      "id": "a9c81aa0-10c3-43b0-92a6-e16f80d28a81",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        1740,
+        -20
+      ],
+      "id": "3e282bc7-1013-4e7c-87a9-30aecb18f273",
+      "name": "Aggregate"
+    },
+    {
+      "parameters": {
+        "operation": "fromJson",
+        "binaryPropertyName": "mistral-ocr.json",
+        "options": {}
+      },
+      "id": "8c4cf001-ed24-4009-90e5-e798799ed534",
+      "name": "Extract from File1",
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        1040,
+        -20
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [\n  {\n    json: {\n      ocrimageout: $input.first().json.data.pages[0].markdown\n        .replace(/!\\[img-\\d+\\.jpeg\\]\\(img-\\d+\\.jpeg\\)/g, '') // Remove image references\n        .replace(/\\n+/g, ' ') // Replace multiple newlines with a single space\n        .replace(/\\s+/g, ' ') // Normalize multiple spaces\n        .trim() // Remove leading/trailing spaces\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1260,
+        -20
+      ],
+      "id": "9ba3b394-c28c-47ca-a8fb-02f3107b47bc",
+      "name": "Code"
+    },
+    {
+      "parameters": {
+        "resource": "audio",
+        "operation": "translate",
+        "binaryPropertyName": "=data",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        1040,
+        -220
+      ],
+      "id": "edf6b206-ad9f-4e94-9ec3-abffa385664e",
+      "name": "Translate a recording",
+      "credentials": {
+        "openAiApi": {
+          "id": "LUnLT0BZVnYnczC9",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Input: An array with an object containing stringified JSON under the \"output\" key\nconst raw = items[0].json.output;\n\n// Step 1: Parse the stringified JSON\nlet parsed;\ntry {\n  parsed = JSON.parse(raw);\n} catch (error) {\n  throw new Error(\"Failed to parse JSON: \" + error.message);\n}\n\n// Step 2: Optional - Number section titles (for Outline)\nparsed.Outline = parsed.Outline.map((section, index) => {\n  return `${index + 1}. ${section}`;\n});\n\n// Step 3: Return cleaned object\nreturn [\n  {\n    json: parsed\n  }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2340,
+        -20
+      ],
+      "id": "314b10e5-61c3-4cf3-afbe-75eec4568065",
+      "name": "Code1"
+    },
+    {
+      "parameters": {
+        "operation": "sendAndWait",
+        "chatId": "1484501052",
+        "message": "=Outline \n{{ $json.Outline }}\n\nTone: {{ $json[\"Directional refinement\"].tone }}\nStructure: {{ $json[\"Directional refinement\"].structure }}\nDepth: {{ $json[\"Directional refinement\"].depth }}\n\nPublic sources \nWikipedia: {{ $json[\"public sources\"].Wikipedia }}",
+        "responseType": "customForm",
+        "defineForm": "json",
+        "jsonOutput": "[\n  {\n    \"fieldLabel\": \"Name\",\n    \"placeholder\": \"Enter your name\",\n    \"requiredField\": true\n  },\n  {\n    \"fieldLabel\": \"Status\",\n    \"fieldType\": \"dropdown\",\n    \"fieldOptions\": {\n      \"values\": [\n        { \"option\": \"Approve\" },\n        { \"option\": \"Not Approve\" },\n        { \"option\": \"Modify\" }\n      ]\n    },\n    \"requiredField\": true\n  },\n  {\n    \"fieldLabel\": \"Modification Required\",\n    \"fieldType\": \"textarea\",\n    \"placeholder\": \"Describe modifications if any\",\n    \"requiredField\": false\n  }\n]\n",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        2580,
+        -20
+      ],
+      "id": "b01eefb1-b6fb-4248-936d-a310d8e37232",
+      "name": "Send a text message",
+      "webhookId": "f925423e-ff89-43b0-9943-693222cebf87",
+      "credentials": {
+        "telegramApi": {
+          "id": "naY5XPVeR0VROjIF",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "8033360e-edf1-4b43-bc3d-5ce3126d6d62",
+              "leftValue": "={{ $json.data.Status }}",
+              "rightValue": "Modify",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2780,
+        -20
+      ],
+      "id": "05875eb4-f53b-4c10-911e-13d8d83e2c9e",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "folderId": "default",
+        "title": "={{ $('Aggregate').item.json.data[0].message.text }}"
+      },
+      "type": "n8n-nodes-base.googleDocs",
+      "typeVersion": 2,
+      "position": [
+        3240,
+        0
+      ],
+      "id": "00ad9c4c-dfa3-4c83-ad50-07ebcd1eda45",
+      "name": "Create a document",
+      "credentials": {
+        "googleDocsOAuth2Api": {
+          "id": "fjGdvNLnRMcNMHwj",
+          "name": "Google Docs account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentURL": "={{ $json.id }}",
+        "actionsUi": {
+          "actionFields": [
+            {
+              "action": "insert",
+              "text": "={{ $('Code2').item.json.markdownContent }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.googleDocs",
+      "typeVersion": 2,
+      "position": [
+        3500,
+        0
+      ],
+      "id": "6e4bf673-db43-49c2-abaa-09cd5c91b3e6",
+      "name": "Update a document",
+      "credentials": {
+        "googleDocsOAuth2Api": {
+          "id": "fjGdvNLnRMcNMHwj",
+          "name": "Google Docs account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get data from input\nconst outline = $('Code1').first().json.Outline || [];\nconst refinement = $('Code1').first().json[\"Directional refinement\"] || {};\nconst sources = $('Code1').first().json[\"public sources\"] || {};\n\n// Initialize Markdown string\nlet markdown = `# Data Engineering Article Summary\\n\\n`;\n\n// Section 1: Outline\nif (outline.length) {\n  markdown += `## Outline\\n\\n`;\n  outline.forEach(item => {\n    // Auto-handle nested or indented lines (e.g., \"5.   - Compute\")\n    if (item.trim().startsWith(\"- \")) {\n      markdown += `  ${item.trim()}\\n`;\n    } else {\n      markdown += `- ${item.trim()}\\n`;\n    }\n  });\n  markdown += `\\n`;\n}\n\n// Section 2: Directional Refinement\nif (Object.keys(refinement).length) {\n  markdown += `## Directional Refinement\\n\\n`;\n  for (const [key, value] of Object.entries(refinement)) {\n    markdown += `- **${key}**: ${value}\\n`;\n  }\n  markdown += `\\n`;\n}\n\n// Section 3: Public Sources\nif (Object.keys(sources).length) {\n  markdown += `## Public Sources\\n\\n`;\n  for (const [source, entries] of Object.entries(sources)) {\n    markdown += `### ${source}\\n\\n`;\n    entries.forEach(entry => {\n      markdown += `> ${entry.trim()}\\n\\n`;\n    });\n  }\n}\n\n// Optional: Convert to binary so it can be uploaded or saved as file\nconst buffer = Buffer.from(markdown, 'utf8');\nreturn [\n  {\n    json: {\n      fileName: \"data_engineering_summary.md\",\n      markdownContent: markdown\n    },\n    binary: {\n      data: {\n        data: buffer.toString('base64'),\n        mimeType: 'text/markdown',\n        fileName: 'data_engineering_summary.md'\n      }\n    }\n  }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3020,
+        0
+      ],
+      "id": "0e541e15-f398-4bd3-9003-63b09e873683",
+      "name": "Code2"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Get a file",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Get a file1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Aggregate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Extract from File1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get a file1": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get a file": {
+      "main": [
+        [
+          {
+            "node": "Translate a recording",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wikipedia": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File1": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "Aggregate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Translate a recording": {
+      "main": [
+        [
+          {
+            "node": "Aggregate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Code1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code1": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a text message": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Code2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create a document": {
+      "main": [
+        [
+          {
+            "node": "Update a document",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code2": {
+      "main": [
+        [
+          {
+            "node": "Create a document",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "ce6913ac-e81f-4f5e-8f6c-776a5b1619fd",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "fbc6e849d016178228efccae4b7e89ea9e1517c7ec9f1c04a81ee9e973804f1f"
+  },
+  "id": "fHGlgZr2iswra7sj",
+  "tags": []
+}
